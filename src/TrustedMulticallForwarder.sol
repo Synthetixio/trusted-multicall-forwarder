@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Adds error bubbling and MinimialForward to Multicall3
+// ERC-2771 compliant trusted forwarder including Multicall3 functionality with error bubbling
 pragma solidity ^0.8.13;
 
 import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";

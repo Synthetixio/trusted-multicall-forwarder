@@ -39,7 +39,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         for (uint256 i = 0; i < length;) {
             bool success;
             call = calls[i];
-            (success, returnData[i]) = call.target.call(call.callData);
+            (success, returnData[i]) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (!success) {
 								bytes memory revertData = returnData[i];
                 uint len = revertData.length;
@@ -64,7 +64,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
             call = calls[i];
-            (result.success, result.returnData) = call.target.call(call.callData);
+            (result.success, result.returnData) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (requireSuccess && !result.success) {
 								bytes memory revertData = result.returnData;
                 uint len = revertData.length;
@@ -108,7 +108,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
             calli = calls[i];
-            (result.success, result.returnData) = calli.target.call(calli.callData);
+            (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
             if (calli.allowFailure && !result.success) {
 								bytes memory revertData = result.returnData;
                 uint len = revertData.length;
@@ -136,7 +136,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             // Humanity will be a Type V Kardashev Civilization before this overflows - andreas
             // ~ 10^25 Wei in existence << ~ 10^76 size uint fits in a uint256
             unchecked { valAccumulator += val; }
-            (result.success, result.returnData) = calli.target.call{value: val}(calli.callData);
+            (result.success, result.returnData) = calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
             if (!calli.allowFailure && !result.success) {
 								bytes memory revertData = result.returnData;
                 uint len = revertData.length;

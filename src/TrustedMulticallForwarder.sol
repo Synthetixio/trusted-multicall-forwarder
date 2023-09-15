@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: MIT
-// ERC-2771 compliant trusted forwarder including Multicall3 functionality with error bubbling
 pragma solidity ^0.8.13;
 
 import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
 
+/// @title TrustedMulticallForwarder
+/// @notice Aggregate results from multiple function calls
+/// @dev Derived from Multicall3
+/// @dev Modified for support to bubble errors
+/// @dev Multicall & Multicall2 backwards-compatible
+/// @dev Aggregate methods are marked `payable` to save 24 gas per call
+/// @dev Includes ERC-2771 trusted forwarder functionality 
+/// @author Michael Elliot <mike@makerdao.com>
+/// @author Joshua Levine <joshua@makerdao.com>
+/// @author Nick Johnson <arachnid@notdot.net>
+/// @author Andreas Bigger <andreas@nascent.xyz>
+/// @author Matt Solomon <matt@mattsolomon.dev>
+/// @author Daniel Beal <db@cc.snxdao.io>
+/// @author Noah Litvin <noah.litvin@gmail.com>
 contract TrustedMulticallForwarder is MinimalForwarder {
     struct Call {
         address target;

@@ -152,7 +152,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             unchecked { valAccumulator += val; }
             (result.success, result.returnData) = calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
             if (!calli.allowFailure && !result.success) {
-								bytes memory revertData = result.returnData;
+				bytes memory revertData = result.returnData;
                 uint len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
@@ -162,6 +162,34 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         }
         // Finally, make sure the msg.value = SUM(call[0...i].value)
         require(msg.value == valAccumulator, "Multicall3: value mismatch");
+    }
+
+    function multicall(Call3Value[] calldata calls) public payable returns (Result[] memory returnData) {
+        return aggregate3Value(calls);
+    }
+
+    function executeMulticall(
+        Call3Value[] calldata calls,
+        bytes calldata signature
+    ) public payable returns (bool, bytes memory) {
+        ForwardRequest req = calls; // TODO: Unsure how to do this?
+        require(verify(req, signature), "MinimalForwarder: signature does not match request");
+        _nonces[req.from] = req.nonce + 1;
+        Result[] memory result = aggregate3Value(calls);
+
+        // Validate that the relayer has sent enough gas for the call.
+        // See https://ronan.eth.limo/blog/ethereum-gas-dangers/
+        if (gasleft() <= req.gas / 63) {
+            // We explicitly trigger invalid opcode to consume all gas and bubble-up the effects, since
+            // neither revert or assert consume all gas since Solidity 0.8.0
+            // https://docs.soliditylang.org/en/v0.8.0/control-structures.html#panic-via-assert-and-error-via-require
+            /// @solidity memory-safe-assembly
+            assembly {
+                invalid()
+            }
+        }
+
+        return (result.success, result.returnData);
     }
 
     /// @notice Returns the block hash for the given block number

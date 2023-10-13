@@ -9,7 +9,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
 /// @dev Modified for support to bubble errors
 /// @dev Multicall & Multicall2 backwards-compatible
 /// @dev Aggregate methods are marked `payable` to save 24 gas per call
-/// @dev Includes ERC-2771 trusted forwarder functionality 
+/// @dev Includes ERC-2771 trusted forwarder functionality
 /// @author Michael Elliot <mike@makerdao.com>
 /// @author Joshua Levine <joshua@makerdao.com>
 /// @author Nick Johnson <arachnid@notdot.net>
@@ -55,14 +55,16 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             call = calls[i];
             (success, returnData[i]) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (!success) {
-				bytes memory revertData = returnData[i];
-                uint len = revertData.length;
+                bytes memory revertData = returnData[i];
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
 
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -71,7 +73,11 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     /// @param requireSuccess If true, require all calls to succeed
     /// @param calls An array of Call structs
     /// @return returnData An array of Result structs
-    function tryAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (Result[] memory returnData) {
+    function tryAggregate(bool requireSuccess, Call[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 length = calls.length;
         returnData = new Result[](length);
         Call calldata call;
@@ -80,13 +86,15 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             call = calls[i];
             (result.success, result.returnData) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (requireSuccess && !result.success) {
-				bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -96,7 +104,11 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     /// @return blockNumber The block number where the calls were executed
     /// @return blockHash The hash of the block where the calls were executed
     /// @return returnData An array of Result structs
-    function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData) {
+    function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls)
+        public
+        payable
+        returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)
+    {
         blockNumber = block.number;
         blockHash = blockhash(block.number);
         returnData = tryAggregate(requireSuccess, calls);
@@ -108,7 +120,11 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     /// @return blockNumber The block number where the calls were executed
     /// @return blockHash The hash of the block where the calls were executed
     /// @return returnData An array of Result structs
-    function blockAndAggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData) {
+    function blockAndAggregate(Call[] calldata calls)
+        public
+        payable
+        returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)
+    {
         (blockNumber, blockHash, returnData) = tryBlockAndAggregate(true, calls);
     }
 
@@ -124,13 +140,15 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             calli = calls[i];
             (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
             if (calli.allowFailure && !result.success) {
-				bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -149,16 +167,21 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             uint256 val = calli.value;
             // Humanity will be a Type V Kardashev Civilization before this overflows - andreas
             // ~ 10^25 Wei in existence << ~ 10^76 size uint fits in a uint256
-            unchecked { valAccumulator += val; }
-            (result.success, result.returnData) = calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
+            unchecked {
+                valAccumulator += val;
+            }
+            (result.success, result.returnData) =
+                calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
             if (calli.allowFailure && !result.success) {
-				bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
         // Finally, make sure the msg.value = SUM(call[0...i].value)
         require(msg.value == valAccumulator, "Multicall3: value mismatch");

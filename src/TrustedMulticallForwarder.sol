@@ -55,7 +55,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             call = calls[i];
             (success, returnData[i]) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (!success) {
-								bytes memory revertData = returnData[i];
+				bytes memory revertData = returnData[i];
                 uint len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
@@ -80,7 +80,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             call = calls[i];
             (result.success, result.returnData) = call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (requireSuccess && !result.success) {
-								bytes memory revertData = result.returnData;
+				bytes memory revertData = result.returnData;
                 uint len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
@@ -124,7 +124,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             calli = calls[i];
             (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
             if (calli.allowFailure && !result.success) {
-								bytes memory revertData = result.returnData;
+				bytes memory revertData = result.returnData;
                 uint len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
@@ -151,8 +151,8 @@ contract TrustedMulticallForwarder is MinimalForwarder {
             // ~ 10^25 Wei in existence << ~ 10^76 size uint fits in a uint256
             unchecked { valAccumulator += val; }
             (result.success, result.returnData) = calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
-            if (!calli.allowFailure && !result.success) {
-								bytes memory revertData = result.returnData;
+            if (calli.allowFailure && !result.success) {
+				bytes memory revertData = result.returnData;
                 uint len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)

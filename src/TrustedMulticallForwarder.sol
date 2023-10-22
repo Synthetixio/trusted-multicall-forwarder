@@ -17,6 +17,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
 /// @author Matt Solomon <matt@mattsolomon.dev>
 /// @author Daniel Beal <db@cc.snxdao.io>
 /// @author Noah Litvin <noah.litvin@gmail.com>
+/// @author Jared Borders <jaredborders@pm.me>
 contract TrustedMulticallForwarder is MinimalForwarder {
     struct Call {
         address target;

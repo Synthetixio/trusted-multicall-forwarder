@@ -49,7 +49,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     error ZeroAddress();
 
     /// @dev See {EIP712-constructor}
-    constructor(string memory name) ERC2771Forwarder(name) {}
+    constructor() ERC2771Forwarder("TrustedMulticallForwarder") {}
 
     /// @notice Backwards-compatible call aggregation with Multicall
     /// @param calls An array of Call structs
@@ -74,7 +74,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
 
             (success, returnData[i]) =
                 call.target.call(abi.encodePacked(call.callData, msg.sender));
-            
+
             if (!success) {
                 bytes memory revertData = returnData[i];
                 uint256 len = revertData.length;

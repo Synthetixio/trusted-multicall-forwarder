@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
-import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
+import {
+    ERC2771Forwarder,
+    Address
+} from "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
 
 /// @title TrustedMulticallForwarder
 /// @notice Aggregate results from multiple function calls
@@ -18,7 +21,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
 /// @author Daniel Beal <db@cc.snxdao.io>
 /// @author Noah Litvin <noah.litvin@gmail.com>
 /// @author Jared Borders <jaredborders@pm.me>
-contract TrustedMulticallForwarder is MinimalForwarder {
+contract TrustedMulticallForwarder is ERC2771Forwarder {
     struct Call {
         address target;
         bytes callData;
@@ -42,19 +45,36 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         bytes returnData;
     }
 
+    /// @notice thrown when an address is the zero address
+    error ZeroAddress();
+
+    /// @dev See {EIP712-constructor}
+    constructor(string memory name) ERC2771Forwarder(name) {}
+
     /// @notice Backwards-compatible call aggregation with Multicall
     /// @param calls An array of Call structs
     /// @return blockNumber The block number where the calls were executed
     /// @return returnData An array of bytes containing the responses
-    function aggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes[] memory returnData) {
+    function aggregate(Call[] calldata calls)
+        public
+        payable
+        returns (uint256 blockNumber, bytes[] memory returnData)
+    {
         blockNumber = block.number;
+
         uint256 length = calls.length;
         returnData = new bytes[](length);
+
         Call calldata call;
+
         for (uint256 i = 0; i < length;) {
             bool success;
+
             call = calls[i];
-            (success, returnData[i]) = call.target.call(abi.encodePacked(call.callData, msg.sender));
+
+            (success, returnData[i]) =
+                call.target.call(abi.encodePacked(call.callData, msg.sender));
+            
             if (!success) {
                 bytes memory revertData = returnData[i];
                 uint256 len = revertData.length;
@@ -81,11 +101,17 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     {
         uint256 length = calls.length;
         returnData = new Result[](length);
+
         Call calldata call;
+
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
+
             call = calls[i];
-            (result.success, result.returnData) = call.target.call(abi.encodePacked(call.callData, msg.sender));
+
+            (result.success, result.returnData) =
+                call.target.call(abi.encodePacked(call.callData, msg.sender));
+
             if (requireSuccess && !result.success) {
                 bytes memory revertData = result.returnData;
                 uint256 len = revertData.length;
@@ -93,6 +119,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
                     revert(add(revertData, 0x20), len)
                 }
             }
+
             unchecked {
                 ++i;
             }
@@ -108,7 +135,11 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls)
         public
         payable
-        returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)
+        returns (
+            uint256 blockNumber,
+            bytes32 blockHash,
+            Result[] memory returnData
+        )
     {
         blockNumber = block.number;
         blockHash = blockhash(block.number);
@@ -124,7 +155,11 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     function blockAndAggregate(Call[] calldata calls)
         public
         payable
-        returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)
+        returns (
+            uint256 blockNumber,
+            bytes32 blockHash,
+            Result[] memory returnData
+        )
     {
         (blockNumber, blockHash, returnData) = tryBlockAndAggregate(true, calls);
     }
@@ -132,14 +167,24 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     /// @notice Aggregate calls, ensuring each returns success if required
     /// @param calls An array of Call3 structs
     /// @return returnData An array of Result structs
-    function aggregate3(Call3[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3(Call3[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 length = calls.length;
         returnData = new Result[](length);
+
         Call3 calldata calli;
+
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
+
             calli = calls[i];
-            (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
+
+            (result.success, result.returnData) =
+                calli.target.call(abi.encodePacked(calli.callData, msg.sender));
+
             if (calli.allowFailure && !result.success) {
                 bytes memory revertData = result.returnData;
                 uint256 len = revertData.length;
@@ -147,6 +192,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
                     revert(add(revertData, 0x20), len)
                 }
             }
+
             unchecked {
                 ++i;
             }
@@ -154,25 +200,38 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     }
 
     /// @notice Aggregate calls with a msg value
-    /// @notice Reverts if msg.value is less than the sum of the call values
+    /// @notice Reverts if msg.value does not equal the sum of the call values
     /// @param calls An array of Call3Value structs
     /// @return returnData An array of Result structs
-    function aggregate3Value(Call3Value[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3Value(Call3Value[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 valAccumulator;
         uint256 length = calls.length;
+
         returnData = new Result[](length);
+
         Call3Value calldata calli;
+
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
+
             calli = calls[i];
+
             uint256 val = calli.value;
+
             // Humanity will be a Type V Kardashev Civilization before this overflows - andreas
             // ~ 10^25 Wei in existence << ~ 10^76 size uint fits in a uint256
             unchecked {
                 valAccumulator += val;
             }
-            (result.success, result.returnData) =
-                calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
+
+            (result.success, result.returnData) = calli.target.call{value: val}(
+                abi.encodePacked(calli.callData, msg.sender)
+            );
+
             if (calli.allowFailure && !result.success) {
                 bytes memory revertData = result.returnData;
                 uint256 len = revertData.length;
@@ -180,45 +239,119 @@ contract TrustedMulticallForwarder is MinimalForwarder {
                     revert(add(revertData, 0x20), len)
                 }
             }
+
             unchecked {
                 ++i;
             }
         }
-        // Finally, make sure the msg.value = SUM(call[0...i].value)
-        require(msg.value == valAccumulator, "Multicall3: value mismatch");
+
+        // Finally, make sure the msg.value == SUM(call[0...i].value)
+        if (msg.value != valAccumulator) {
+            revert ERC2771ForwarderMismatchedValue(valAccumulator, msg.value);
+        }
     }
 
-    function multicall(Call3Value[] calldata calls) public payable returns (Result[] memory returnData) {
+    /// @notice Aggregate calls with a msg value
+    /// @notice Reverts if msg.value does not equal the sum of the call values
+    /// @param calls An array of Call3Value structs
+    /// @return returnData An array of Result structs
+    function multicall(Call3Value[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         return aggregate3Value(calls);
     }
 
-    function executeMulticall(
-        Call3Value[] calldata calls,
-        bytes calldata signature
-    ) public payable returns (bool, bytes memory) {
-        ForwardRequest req = calls; // TODO: Unsure how to do this?
-        require(verify(req, signature), "MinimalForwarder: signature does not match request");
-        _nonces[req.from] = req.nonce + 1;
-        Result[] memory result = aggregate3Value(calls);
+    /// @notice Aggregate ForwardRequestData objects
+    /// @notice Reverts if msg.value does not equal the sum of the call values
+    /// @notice Reverts if the refundReceiver is the zero address
+    /// @param requests An array of ForwardRequestData structs
+    /// @param refundReceiver The address to refund excess value to
+    /// @return returnData An array of Result structs
+    function sponsoredMulticall(
+        ForwardRequestData[] calldata requests,
+        address payable refundReceiver
+    ) public payable returns (Result[] memory returnData) {
+        // ensure refundReceiver is not the zero address
+        if (refundReceiver == address(0)) revert ZeroAddress();
 
-        // Validate that the relayer has sent enough gas for the call.
-        // See https://ronan.eth.limo/blog/ethereum-gas-dangers/
-        if (gasleft() <= req.gas / 63) {
-            // We explicitly trigger invalid opcode to consume all gas and bubble-up the effects, since
-            // neither revert or assert consume all gas since Solidity 0.8.0
-            // https://docs.soliditylang.org/en/v0.8.0/control-structures.html#panic-via-assert-and-error-via-require
-            /// @solidity memory-safe-assembly
-            assembly {
-                invalid()
+        uint256 length = requests.length;
+        returnData = new Result[](length);
+
+        ForwardRequestData calldata req;
+
+        uint256 requestsValue;
+        uint256 refundValue;
+
+        for (uint256 i; i < length;) {
+            Result memory result = returnData[i];
+
+            req = requests[i];
+            requestsValue += requests[i].value;
+
+            (
+                bool isTrustedForwarder,
+                bool active,
+                bool signerMatch,
+                address signer
+            ) = _validate(req);
+
+            if (isTrustedForwarder && signerMatch && active) {
+                // Nonce should be used before the call to prevent reusing by reentrancy
+                uint256 currentNonce = _useNonce(signer);
+
+                (result.success, result.returnData) = req.to.call{
+                    value: req.value,
+                    gas: req.gas
+                }(abi.encodePacked(req.data, req.from));
+
+                /// @dev see ERC2771Forwarder._checkForwardedGas() for further details
+                if (gasleft() < req.gas / 63) {
+                    assembly {
+                        invalid()
+                    }
+                }
+
+                emit ExecutedForwardRequest(
+                    signer, currentNonce, result.success
+                );
+            }
+
+            /// @notice If the call was not successful, we refund the value to the refundReceiver
+            /// @dev unsucessful calls are never reverted
+            if (!result.success) {
+                refundValue += requests[i].value;
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
-        return (result.success, result.returnData);
+        // The batch should revert if there's a mismatched msg.value provided
+        // to avoid request value tampering
+        if (requestsValue != msg.value) {
+            revert ERC2771ForwarderMismatchedValue(requestsValue, msg.value);
+        }
+
+        // Some requests with value were invalid (possibly due to frontrunning).
+        // To avoid leaving ETH in the contract this value is refunded.
+        if (refundValue != 0) {
+            // We know refundReceiver != address(0) && requestsValue == msg.value
+            // meaning we can ensure refundValue is not taken from the original contract's balance
+            // and refundReceiver is a known account.
+            Address.sendValue(refundReceiver, refundValue);
+        }
     }
 
     /// @notice Returns the block hash for the given block number
     /// @param blockNumber The block number
-    function getBlockHash(uint256 blockNumber) public view returns (bytes32 blockHash) {
+    function getBlockHash(uint256 blockNumber)
+        public
+        view
+        returns (bytes32 blockHash)
+    {
         blockHash = blockhash(blockNumber);
     }
 
@@ -232,9 +365,9 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         coinbase = block.coinbase;
     }
 
-    /// @notice Returns the block difficulty
-    function getCurrentBlockDifficulty() public view returns (uint256 difficulty) {
-        difficulty = block.difficulty;
+    /// @notice Returns the bock prevrandao
+    function getPrevRandao() public view returns (uint256 prevrandao) {
+        prevrandao = block.prevrandao;
     }
 
     /// @notice Returns the block gas limit
@@ -243,12 +376,20 @@ contract TrustedMulticallForwarder is MinimalForwarder {
     }
 
     /// @notice Returns the block timestamp
-    function getCurrentBlockTimestamp() public view returns (uint256 timestamp) {
+    function getCurrentBlockTimestamp()
+        public
+        view
+        returns (uint256 timestamp)
+    {
         timestamp = block.timestamp;
     }
 
     /// @notice Returns the (ETH) balance of a given address
-    function getEthBalance(address addr) public view returns (uint256 balance) {
+    function getEthBalance(address addr)
+        public
+        view
+        returns (uint256 balance)
+    {
         balance = addr.balance;
     }
 

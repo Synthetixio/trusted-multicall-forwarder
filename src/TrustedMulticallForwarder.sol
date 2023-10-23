@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
+import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 
 /// @title TrustedMulticallForwarder
 /// @notice Aggregate results from multiple function calls
@@ -17,7 +17,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/MinimalForwarder.sol";
 /// @author Matt Solomon <matt@mattsolomon.dev>
 /// @author Daniel Beal <db@cc.snxdao.io>
 /// @author Noah Litvin <noah.litvin@gmail.com>
-contract TrustedMulticallForwarder is MinimalForwarder {
+contract TrustedMulticallForwarder is ERC2771Forwarder {
     struct Call {
         address target;
         bytes callData;
@@ -40,6 +40,8 @@ contract TrustedMulticallForwarder is MinimalForwarder {
         bool success;
         bytes returnData;
     }
+    
+    constructor() ERC2771Forwarder('trusted-multicall-forwarder') {}
 
     /// @notice Backwards-compatible call aggregation with Multicall
     /// @param calls An array of Call structs
@@ -182,7 +184,7 @@ contract TrustedMulticallForwarder is MinimalForwarder {
 
     /// @notice Returns the block difficulty
     function getCurrentBlockDifficulty() public view returns (uint256 difficulty) {
-        difficulty = block.difficulty;
+        difficulty = block.prevrandao;
     }
 
     /// @notice Returns the block gas limit

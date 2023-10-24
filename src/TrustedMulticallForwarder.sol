@@ -9,7 +9,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 /// @dev Modified for support to bubble errors
 /// @dev Multicall & Multicall2 backwards-compatible
 /// @dev Aggregate methods are marked `payable` to save 24 gas per call
-/// @dev Includes ERC-2771 trusted forwarder functionality 
+/// @dev Includes ERC-2771 trusted forwarder functionality
 /// @author Michael Elliot <mike@makerdao.com>
 /// @author Joshua Levine <joshua@makerdao.com>
 /// @author Nick Johnson <arachnid@notdot.net>
@@ -40,14 +40,18 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         bool success;
         bytes returnData;
     }
-    
-    constructor() ERC2771Forwarder('trusted-multicall-forwarder') {}
+
+    constructor() ERC2771Forwarder("trusted-multicall-forwarder") {}
 
     /// @notice Backwards-compatible call aggregation with Multicall
     /// @param calls An array of Call structs
     /// @return blockNumber The block number where the calls were executed
     /// @return returnData An array of bytes containing the responses
-    function aggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes[] memory returnData) {
+    function aggregate(Call[] calldata calls)
+        public
+        payable
+        returns (uint256 blockNumber, bytes[] memory returnData)
+    {
         blockNumber = block.number;
         uint256 length = calls.length;
         returnData = new bytes[](length);
@@ -55,16 +59,19 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         for (uint256 i = 0; i < length;) {
             bool success;
             call = calls[i];
-            (success, returnData[i]) = call.target.call(abi.encodePacked(call.callData, msg.sender));
+            (success, returnData[i]) =
+                call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (!success) {
-								bytes memory revertData = returnData[i];
-                uint len = revertData.length;
+                bytes memory revertData = returnData[i];
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
 
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -73,22 +80,29 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @param requireSuccess If true, require all calls to succeed
     /// @param calls An array of Call structs
     /// @return returnData An array of Result structs
-    function tryAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (Result[] memory returnData) {
+    function tryAggregate(bool requireSuccess, Call[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 length = calls.length;
         returnData = new Result[](length);
         Call calldata call;
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
             call = calls[i];
-            (result.success, result.returnData) = call.target.call(abi.encodePacked(call.callData, msg.sender));
+            (result.success, result.returnData) =
+                call.target.call(abi.encodePacked(call.callData, msg.sender));
             if (requireSuccess && !result.success) {
-								bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -98,7 +112,15 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @return blockNumber The block number where the calls were executed
     /// @return blockHash The hash of the block where the calls were executed
     /// @return returnData An array of Result structs
-    function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData) {
+    function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls)
+        public
+        payable
+        returns (
+            uint256 blockNumber,
+            bytes32 blockHash,
+            Result[] memory returnData
+        )
+    {
         blockNumber = block.number;
         blockHash = blockhash(block.number);
         returnData = tryAggregate(requireSuccess, calls);
@@ -110,29 +132,44 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @return blockNumber The block number where the calls were executed
     /// @return blockHash The hash of the block where the calls were executed
     /// @return returnData An array of Result structs
-    function blockAndAggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData) {
+    function blockAndAggregate(Call[] calldata calls)
+        public
+        payable
+        returns (
+            uint256 blockNumber,
+            bytes32 blockHash,
+            Result[] memory returnData
+        )
+    {
         (blockNumber, blockHash, returnData) = tryBlockAndAggregate(true, calls);
     }
 
     /// @notice Aggregate calls, ensuring each returns success if required
     /// @param calls An array of Call3 structs
     /// @return returnData An array of Result structs
-    function aggregate3(Call3[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3(Call3[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 length = calls.length;
         returnData = new Result[](length);
         Call3 calldata calli;
         for (uint256 i = 0; i < length;) {
             Result memory result = returnData[i];
             calli = calls[i];
-            (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
+            (result.success, result.returnData) =
+                calli.target.call(abi.encodePacked(calli.callData, msg.sender));
             if (calli.allowFailure && !result.success) {
-								bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -140,7 +177,11 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @notice Reverts if msg.value is less than the sum of the call values
     /// @param calls An array of Call3Value structs
     /// @return returnData An array of Result structs
-    function aggregate3Value(Call3Value[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3Value(Call3Value[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 valAccumulator;
         uint256 length = calls.length;
         returnData = new Result[](length);
@@ -151,16 +192,22 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
             uint256 val = calli.value;
             // Humanity will be a Type V Kardashev Civilization before this overflows - andreas
             // ~ 10^25 Wei in existence << ~ 10^76 size uint fits in a uint256
-            unchecked { valAccumulator += val; }
-            (result.success, result.returnData) = calli.target.call{value: val}(abi.encodePacked(calli.callData, msg.sender));
+            unchecked {
+                valAccumulator += val;
+            }
+            (result.success, result.returnData) = calli.target.call{value: val}(
+                abi.encodePacked(calli.callData, msg.sender)
+            );
             if (!calli.allowFailure && !result.success) {
-								bytes memory revertData = result.returnData;
-                uint len = revertData.length;
+                bytes memory revertData = result.returnData;
+                uint256 len = revertData.length;
                 assembly {
                     revert(add(revertData, 0x20), len)
                 }
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
         // Finally, make sure the msg.value = SUM(call[0...i].value)
         require(msg.value == valAccumulator, "Multicall3: value mismatch");
@@ -168,7 +215,11 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
 
     /// @notice Returns the block hash for the given block number
     /// @param blockNumber The block number
-    function getBlockHash(uint256 blockNumber) public view returns (bytes32 blockHash) {
+    function getBlockHash(uint256 blockNumber)
+        public
+        view
+        returns (bytes32 blockHash)
+    {
         blockHash = blockhash(blockNumber);
     }
 
@@ -183,7 +234,11 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     }
 
     /// @notice Returns the block difficulty
-    function getCurrentBlockDifficulty() public view returns (uint256 difficulty) {
+    function getCurrentBlockDifficulty()
+        public
+        view
+        returns (uint256 difficulty)
+    {
         difficulty = block.prevrandao;
     }
 
@@ -193,12 +248,20 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     }
 
     /// @notice Returns the block timestamp
-    function getCurrentBlockTimestamp() public view returns (uint256 timestamp) {
+    function getCurrentBlockTimestamp()
+        public
+        view
+        returns (uint256 timestamp)
+    {
         timestamp = block.timestamp;
     }
 
     /// @notice Returns the (ETH) balance of a given address
-    function getEthBalance(address addr) public view returns (uint256 balance) {
+    function getEthBalance(address addr)
+        public
+        view
+        returns (uint256 balance)
+    {
         balance = addr.balance;
     }
 

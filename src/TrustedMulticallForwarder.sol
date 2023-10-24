@@ -213,8 +213,10 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
                 ++i;
             }
         }
-        // Finally, make sure the msg.value = SUM(call[0...i].value)
-        require(msg.value == valAccumulator, "Multicall3: value mismatch");
+        // Finally, make sure the msg.value == SUM(call[0...i].value)
+        if (msg.value != valAccumulator) {
+            revert ERC2771ForwarderMismatchedValue(valAccumulator, msg.value);
+        }
     }
 
     /// @notice Aggregate calls with a msg value

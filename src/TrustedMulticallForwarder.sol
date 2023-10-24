@@ -328,13 +328,9 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         coinbase = block.coinbase;
     }
 
-    /// @notice Returns the block difficulty
-    function getCurrentBlockDifficulty()
-        public
-        view
-        returns (uint256 difficulty)
-    {
-        difficulty = block.prevrandao;
+    /// @notice Returns the bock prevrandao
+    function getPrevRandao() public view returns (uint256 prevrandao) {
+        prevrandao = block.prevrandao;
     }
 
     /// @notice Returns the block gas limit

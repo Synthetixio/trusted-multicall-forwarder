@@ -42,6 +42,9 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         bytes returnData;
     }
 
+    /// @notice Thrown when the provided address is the zero address
+    error ZeroAddress();
+
     constructor() ERC2771Forwarder("trusted-multicall-forwarder") {}
 
     /// @notice Backwards-compatible call aggregation with Multicall

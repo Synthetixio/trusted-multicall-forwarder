@@ -17,6 +17,7 @@ import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 /// @author Matt Solomon <matt@mattsolomon.dev>
 /// @author Daniel Beal <db@cc.snxdao.io>
 /// @author Noah Litvin <noah.litvin@gmail.com>
+/// @author Jared Borders <jaredborders@pm.me>
 contract TrustedMulticallForwarder is ERC2771Forwarder {
     struct Call {
         address target;

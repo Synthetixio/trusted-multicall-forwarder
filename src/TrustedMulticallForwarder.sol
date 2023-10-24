@@ -226,6 +226,88 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         return aggregate3Value(calls);
     }
 
+    /// @notice Aggregate ForwardRequestData objects
+    /// @notice Reverts if msg.value does not equal the sum of the call values
+    /// @notice Reverts if the refundReceiver is the zero address
+    /// @param requests An array of ForwardRequestData structs
+    /// @param refundReceiver The address to refund excess value to
+    /// @return returnData An array of Result structs
+    function executeMulticall(
+        ForwardRequestData[] calldata requests,
+        address payable refundReceiver
+    ) public payable returns (Result[] memory returnData) {
+        // ensure refundReceiver is not the zero address
+        if (refundReceiver == address(0)) revert ZeroAddress();
+
+        uint256 length = requests.length;
+        returnData = new Result[](length);
+
+        ForwardRequestData calldata req;
+
+        uint256 requestsValue;
+        uint256 refundValue;
+
+        for (uint256 i; i < length;) {
+            Result memory result = returnData[i];
+
+            req = requests[i];
+            requestsValue += requests[i].value;
+
+            (
+                bool isTrustedForwarder,
+                bool active,
+                bool signerMatch,
+                address signer
+            ) = _validate(req);
+
+            if (isTrustedForwarder && signerMatch && active) {
+                // Nonce should be used before the call to prevent reusing by reentrancy
+                uint256 currentNonce = _useNonce(signer);
+
+                (result.success, result.returnData) = req.to.call{
+                    value: req.value,
+                    gas: req.gas
+                }(abi.encodePacked(req.data, req.from));
+
+                /// @dev see ERC2771Forwarder._checkForwardedGas() for further details
+                if (gasleft() < req.gas / 63) {
+                    assembly {
+                        invalid()
+                    }
+                }
+
+                emit ExecutedForwardRequest(
+                    signer, currentNonce, result.success
+                );
+            }
+
+            /// @notice If the call was not successful, we refund the value to the refundReceiver
+            /// @dev unsucessful calls are never reverted
+            if (!result.success) {
+                refundValue += requests[i].value;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // The batch should revert if there's a mismatched msg.value provided
+        // to avoid request value tampering
+        if (requestsValue != msg.value) {
+            revert ERC2771ForwarderMismatchedValue(requestsValue, msg.value);
+        }
+
+        // Some requests with value were invalid (possibly due to frontrunning).
+        // To avoid leaving ETH in the contract this value is refunded.
+        if (refundValue != 0) {
+            // We know refundReceiver != address(0) && requestsValue == msg.value
+            // meaning we can ensure refundValue is not taken from the original contract's balance
+            // and refundReceiver is a known account.
+            Address.sendValue(refundReceiver, refundValue);
+        }
+    }
+
     /// @notice Returns the block hash for the given block number
     /// @param blockNumber The block number
     function getBlockHash(uint256 blockNumber)

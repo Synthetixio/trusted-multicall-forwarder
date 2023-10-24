@@ -214,6 +214,18 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         require(msg.value == valAccumulator, "Multicall3: value mismatch");
     }
 
+    /// @notice Aggregate calls with a msg value
+    /// @notice Reverts if msg.value does not equal the sum of the call values
+    /// @param calls An array of Call3Value structs
+    /// @return returnData An array of Result structs
+    function multicall(Call3Value[] calldata calls)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
+        return aggregate3Value(calls);
+    }
+
     /// @notice Returns the block hash for the given block number
     /// @param blockNumber The block number
     function getBlockHash(uint256 blockNumber)

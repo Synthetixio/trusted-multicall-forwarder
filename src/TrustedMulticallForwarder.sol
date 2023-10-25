@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
+import {
+    ERC2771Forwarder,
+    Address
+} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 
 /// @title TrustedMulticallForwarder
 /// @notice Aggregate results from multiple function calls
@@ -219,31 +222,16 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         }
     }
 
-    /// @notice Aggregate calls with a msg value
-    /// @notice Reverts if msg.value does not equal the sum of the call values
-    /// @param calls An array of Call3Value structs
-    /// @return returnData An array of Result structs
-    function multicall(Call3Value[] calldata calls)
-        public
-        payable
-        returns (Result[] memory returnData)
-    {
-        return aggregate3Value(calls);
-    }
-
     /// @notice Aggregate ForwardRequestData objects
     /// @notice Reverts if msg.value does not equal the sum of the call values
     /// @notice Reverts if the refundReceiver is the zero address
     /// @param requests An array of ForwardRequestData structs
-    /// @param refundReceiver The address to refund excess value to
     /// @return returnData An array of Result structs
-    function executeMulticall(
-        ForwardRequestData[] calldata requests,
-        address payable refundReceiver
-    ) public payable returns (Result[] memory returnData) {
-        // ensure refundReceiver is not the zero address
-        if (refundReceiver == address(0)) revert ZeroAddress();
-
+    function executeBatch(ForwardRequestData[] calldata requests)
+        public
+        payable
+        returns (Result[] memory returnData)
+    {
         uint256 length = requests.length;
         returnData = new Result[](length);
 
@@ -309,7 +297,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
             // We know refundReceiver != address(0) && requestsValue == msg.value
             // meaning we can ensure refundValue is not taken from the original contract's balance
             // and refundReceiver is a known account.
-            Address.sendValue(refundReceiver, refundValue);
+            Address.sendValue(payable(msg.sender), refundValue);
         }
     }
 

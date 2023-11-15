@@ -47,7 +47,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @param calls An array of Call structs
     /// @return blockNumber The block number where the calls were executed
     /// @return returnData An array of bytes containing the responses
-    function aggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes[] memory returnData) {
+    function aggregate(Call[] calldata calls) public returns (uint256 blockNumber, bytes[] memory returnData) {
         blockNumber = block.number;
         uint256 length = calls.length;
         returnData = new bytes[](length);
@@ -73,7 +73,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
     /// @param requireSuccess If true, require all calls to succeed
     /// @param calls An array of Call structs
     /// @return returnData An array of Result structs
-    function tryAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (Result[] memory returnData) {
+    function tryAggregate(bool requireSuccess, Call[] calldata calls) public returns (Result[] memory returnData) {
         uint256 length = calls.length;
         returnData = new Result[](length);
         Call calldata call;
@@ -125,7 +125,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
             Result memory result = returnData[i];
             calli = calls[i];
             (result.success, result.returnData) = calli.target.call(abi.encodePacked(calli.callData, msg.sender));
-            if (calli.allowFailure && !result.success) {
+            if (!calli.allowFailure && !result.success) {
 								bytes memory revertData = result.returnData;
                 uint len = revertData.length;
                 assembly {

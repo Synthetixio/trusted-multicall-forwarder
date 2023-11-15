@@ -219,7 +219,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
 
     /// @notice Aggregate ForwardRequestData objects
     /// @notice Reverts if msg.value does not equal the sum of the call values
-    /// @notice Reverts if the refundReceiver is the zero address
+    /// @notice Reverts if the msg.sender is the zero address
     /// @param requests An array of ForwardRequestData structs
     /// @return returnData An array of Result structs
     function executeBatch(ForwardRequestData[] calldata requests)
@@ -269,8 +269,8 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
                 );
             }
 
-            /// @notice If the call was not successful, we refund the value to the refundReceiver
-            /// @dev unsucessful calls are never reverted
+            /// @notice If the call was not successful, we refund the value to the msg.sender
+            /// @dev unsuccessful calls are never reverted
             if (!result.success) {
                 refundValue += requests[i].value;
             }
@@ -289,9 +289,9 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         // Some requests with value were invalid (possibly due to frontrunning).
         // To avoid leaving ETH in the contract this value is refunded.
         if (refundValue != 0) {
-            // We know refundReceiver != address(0) && requestsValue == msg.value
+            // We know msg.sender != address(0) && requestsValue == msg.value
             // meaning we can ensure refundValue is not taken from the original contract's balance
-            // and refundReceiver is a known account.
+            // and msg.sender is a known account.
             Address.sendValue(payable(msg.sender), refundValue);
         }
     }
@@ -316,7 +316,7 @@ contract TrustedMulticallForwarder is ERC2771Forwarder {
         coinbase = block.coinbase;
     }
 
-    /// @notice Returns the bock prevrandao
+    /// @notice Returns the block prevrandao
     function getPrevRandao() public view returns (uint256 prevrandao) {
         prevrandao = block.prevrandao;
     }
